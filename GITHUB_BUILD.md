@@ -19,6 +19,6 @@ The workflow installs Qt 6.8.3 and Inno Setup on a Windows runner. It uses the Q
 
 ## Create a release
 
-Push a version tag such as `v0.1.0`. GitHub Actions will build the installer and attach only `FeatherPhoto-Setup.exe` as a release asset. A manual workflow run builds the same installer and makes it available as a single Actions artifact.
+Push to `main` or start the workflow manually to build the installer as a single Actions artifact. Push a version tag such as `v0.1.0` to build it and attach only `FeatherPhoto-Setup.exe` as a release asset.
 
 GitHub also generates source-code archives for releases automatically; these are separate from the installer asset.
