@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="FeatherPhoto.png">FeatherPhoto.png</file>
+    </qresource>
+</RCC>
