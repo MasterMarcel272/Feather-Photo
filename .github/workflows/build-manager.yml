@@ -1,0 +1,95 @@
+name: Feather Manager installer
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "manager-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-installer:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          archives: qtbase qtimageformats
+          cache: true
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S FeatherManager -B build-manager -G "Visual Studio 17 2022" -A x64 "-DQt6_DIR=$env:QT_ROOT_DIR/lib/cmake/Qt6"
+
+      - name: Build Release
+        run: cmake --build build-manager --config Release --parallel
+
+      - name: Stage application and Qt runtime
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:GITHUB_WORKSPACE "artifacts\manager-app"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          cmake --install build-manager --config Release --prefix $stage
+          $app = Join-Path $stage "FeatherManager.exe"
+          & (Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe") --release --compiler-runtime --no-translations --dir $stage $app
+          if ($LASTEXITCODE -ne 0) { throw "windeployqt failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path (Join-Path $stage "platforms\qwindows.dll"))) { throw "Qt platform plugin was not deployed" }
+
+      - name: Find or install Inno Setup
+        shell: pwsh
+        run: |
+          $candidates = @(
+            (Join-Path $env:ProgramFiles "Inno Setup 7\ISCC.exe"),
+            (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 7\ISCC.exe"),
+            (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
+            (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe")
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            winget install --id JRSoftware.InnoSetup.7 --exact --source winget --silent --accept-package-agreements --accept-source-agreements
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed with exit code $LASTEXITCODE" }
+            $candidates = @(
+              (Join-Path $env:ProgramFiles "Inno Setup 7\ISCC.exe"),
+              (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 7\ISCC.exe")
+            )
+            $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw "Inno Setup compiler was not found" }
+          "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Create installer
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.1.0' }}
+        run: |
+          $version = $env:RELEASE_VERSION -replace '^manager-v', ''
+          & $env:ISCC "/DAppVersion=$version" "/DStageDir=$env:GITHUB_WORKSPACE\artifacts\manager-app" "FeatherManager\packaging\FeatherManager.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/manager-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Feather Manager ${{ github.ref_name }}
+          generate_release_notes: true
+          files: artifacts/manager/FeatherManager-Setup.exe
+
+      - name: Upload installer for main branch and manual runs
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FeatherManager-Setup
+          path: artifacts/manager/FeatherManager-Setup.exe
+          if-no-files-found: error

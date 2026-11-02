@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="FeatherManager.png">FeatherManager.png</file>
+    </qresource>
+    <qresource prefix="/catalog">
+        <file alias="apps.json">../../apps.json</file>
+    </qresource>
+</RCC>

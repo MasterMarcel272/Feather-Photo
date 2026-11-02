@@ -1,0 +1,13 @@
+{
+  "catalogVersion": 1,
+  "apps": [
+    {
+      "id": "feather-photo",
+      "name": "Feather Photo",
+      "description": "A lightweight photo editor with drawing tools and layers.",
+      "repository": "MasterMarcel272/Feather-Photo",
+      "installerAsset": "FeatherPhoto-Setup.exe",
+      "installedRegistryKey": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{80E08CF1-4A84-4BB4-9C6D-08F4C6C946B7}_is1"
+    }
+  ]
+}
